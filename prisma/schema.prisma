@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  whoopUserId  String    @unique
+  email        String?
+  firstName    String?
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  scopes       String
+  tier         String    @default("free") // "free" | "paid"
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  metrics      DailyMetrics[]
+  readings     Reading[]
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model DailyMetrics {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date             String // YYYY-MM-DD (user's local day of the cycle)
+  sleepPerformance Float?
+  sleepConsistency Float?
+  hrv              Float?
+  restingHeartRate Float?
+  recoveryScore    Float?
+  previousStrain   Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, date])
+}
+
+model Reading {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date               String
+  primaryNumber      Int
+  transformedNumber  Int?
+  lines              String // JSON: LineResult[]
+  baselineDays       Int
+  createdAt          DateTime @default(now())
+
+  @@unique([userId, date])
+}

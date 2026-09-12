@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hexagram
 
-## Getting Started
+Your WHOOP biometrics cast a daily I Ching hexagram. Six metrics, compared
+against your own 30-day rolling baseline, become the six lines of the reading.
+No coins, no yarrow stalks — the body's own state is the divination input.
 
-First, run the development server:
+## How a reading is cast
+
+| Line | Metric | Yang when |
+| --- | --- | --- |
+| 1 (bottom) | Sleep performance % | above your baseline |
+| 2 | Sleep consistency % | above your baseline |
+| 3 | HRV (ms) | above your baseline |
+| 4 | Resting heart rate (bpm) | **below** your baseline (lower is favorable) |
+| 5 | Recovery score % | above your baseline |
+| 6 (top) | Previous day's strain | above your baseline |
+
+For each metric `z = (today − mean₃₀) / sd₃₀`. `z > 0` → yang, `z < 0` → yin
+(inverted for resting heart rate). `|z| > 1.5` marks the line as *changing*;
+flipping changing lines yields the transformed hexagram. Lines map to the
+King Wen sequence via a static 64-entry lookup (`src/lib/hexagram/data.ts`).
+Readings are flagged as unstable until ~14 days of data exist.
+
+## Stack
+
+Next.js (App Router) · TypeScript · Tailwind · Prisma + SQLite · Vitest
+
+## Setup
 
 ```bash
+cp .env.example .env         # fill in WHOOP_CLIENT_ID / WHOOP_CLIENT_SECRET / SESSION_SECRET
+npm install                   # runs prisma generate
+npx prisma migrate dev        # creates prisma/dev.db
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Register an app at <https://developer.whoop.com> with redirect URI
+`http://localhost:3000/api/auth/whoop/callback` and scopes
+`offline read:profile read:recovery read:sleep read:cycles read:workout`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Webhooks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Point the WHOOP webhook at `POST /api/webhooks/whoop` (use a tunnel locally).
+Set `WHOOP_WEBHOOK_SECRET` to your client secret; signatures are verified
+(`HMAC-SHA256(timestamp + body)`). `recovery.updated` / `sleep.updated` events
+re-sync the user and regenerate their reading, so no polling is needed.
+`POST /api/readings/sync` is a manual fallback.
 
-## Learn More
+### CLI: cast one day from your own data
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run cast                  # latest day; runs a one-off local OAuth flow if no user exists
+npm run cast -- 2026-09-10    # a specific date
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Demo without WHOOP credentials
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run seed:demo             # 36 days of synthetic data
+open http://localhost:3000/api/dev/login   # dev-only login as the demo user
+```
 
-## Deploy on Vercel
+`/upgrade` has a dev-only tier toggle (disabled in production) until billing is
+wired up.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`npm run lint` · `npm run typecheck` · `npm test` · `npm run build`
