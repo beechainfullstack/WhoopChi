@@ -1,69 +1,71 @@
-import Image from "next/image";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/session";
+import { HowItWorksDetails } from "@/components/HowItWorks";
 
-export default function Home() {
+const ERRORS: Record<string, string> = {
+  invalid_state: "The sign-in link expired or was tampered with. Please try again.",
+  access_denied: "WHOOP access was declined.",
+  no_refresh_token: "WHOOP did not return a refresh token. Check that the app has the offline scope.",
+};
+
+export default async function Home({ searchParams }: PageProps<"/">) {
+  const user = await getCurrentUser();
+  if (user) redirect("/today");
+  const { error } = await searchParams;
+  const errorKey = Array.isArray(error) ? error[0] : error;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-12">
+      <section className="space-y-6 pt-8 text-center">
+        <p className="text-6xl leading-none text-accent" aria-hidden>
+          ䷀
+        </p>
+        <h1 className="text-3xl tracking-tight sm:text-4xl">
+          Your body casts the reading.
+        </h1>
+        <p className="mx-auto max-w-xl text-muted">
+          Every morning, Hexagram turns your WHOOP recovery, sleep, HRV, resting heart
+          rate and strain into an I Ching hexagram. Not coins, not yarrow stalks: six
+          lines drawn from how your body is doing against its own recent history.
+        </p>
+        {errorKey && (
+          <p className="mx-auto max-w-md rounded border border-red-900/60 bg-red-950/30 p-3 text-sm text-red-200">
+            {ERRORS[errorKey] ?? `Sign-in failed: ${errorKey}`}
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
+        )}
+        <div>
           <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/api/auth/whoop"
+            className="inline-block rounded bg-accent px-6 py-3 text-sm font-medium tracking-wide text-background hover:opacity-90"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
+            Connect WHOOP
           </a>
         </div>
-      </main>
+        <p className="text-xs text-muted">
+          Requests read-only access to recovery, sleep, cycles and workouts. Tokens are
+          stored server-side only.
+        </p>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-3">
+        {[
+          ["1. Connect", "Sign in with WHOOP. We pull the last 30 days to seed your personal baseline."],
+          ["2. Wait ~2 weeks", "Readings need about two weeks of your own data before the baseline stabilises. Early readings will swing."],
+          ["3. Read each morning", "When the day's recovery lands, WHOOP notifies us and your hexagram is cast automatically."],
+        ].map(([t, b]) => (
+          <div key={t} className="rounded border border-line bg-card p-4">
+            <h2 className="mb-2 text-sm uppercase tracking-wider text-accent">{t}</h2>
+            <p className="text-sm text-muted">{b}</p>
+          </div>
+        ))}
+      </section>
+
+      <HowItWorksDetails />
+
+      <p className="text-center text-xs text-muted">
+        Prefer to read the full method first? <Link href="/how-it-works" className="underline">See how a reading is generated</Link>.
+      </p>
     </div>
   );
 }
